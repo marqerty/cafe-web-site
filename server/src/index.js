@@ -2,6 +2,7 @@ import express from 'express';
 import { pool } from './db.js';
 import gamesRouter from './routes/games.js';
 import genresRouter from './routes/genres.js';
+import tablesRouter from './routes/tables.js'
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/games', gamesRouter);
 app.use('/api/genres', genresRouter);
+app.use('/api/tables', tablesRouter);
 
 // Неизвестный адрес 404
 app.use((req, res) => {

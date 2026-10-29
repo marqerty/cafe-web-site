@@ -101,4 +101,33 @@ router.get('/:id', async (req, res) => {
     res.json({ game: rows[0] });
 });
 
+// GET /api/games/:id/reviews отзывы об игре (сортировка по дате создания от новых к старым)
+router.get('/:id/reviews', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid game id' });
+  }
+
+  // Сначала проверяем, что игра существует
+  const game = await pool.query('SELECT 1 FROM games WHERE id = $1', [id]);
+  if (game.rows.length === 0) {
+    return res.status(404).json({ error: 'Game not found' });
+  }
+
+  const { rows } = await pool.query(`
+    SELECT
+      r.id,
+      u.name AS author,
+      r.rating,
+      r.text_review,
+      r.created_at
+    FROM reviews r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.game_id = $1
+    ORDER BY r.created_at DESC
+  `, [id]);
+
+  res.json({ reviews: rows });
+});
+
 export default router;

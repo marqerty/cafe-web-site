@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -128,6 +129,44 @@ router.get('/:id/reviews', async (req, res) => {
   `, [id]);
 
   res.json({ reviews: rows });
+});
+
+// POST /api/games/:id/reviews — оставить отзыв (нужен вход, один отзыв на игру)
+router.post('/:id/reviews', requireAuth, async (req, res) => {
+  const gameId = Number(req.params.id);
+  if (!Number.isInteger(gameId) || gameId < 1) {
+    return res.status(400).json({ error: 'Invalid game id' });
+  }
+
+  const { rating, text } = req.body ?? {};
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Rating must be an integer from 1 to 5' });
+  }
+  if (text !== undefined && (typeof text !== 'string' || text.length > 2000)) {
+    return res.status(400).json({ error: 'Invalid text' });
+  }
+  // Пустой текст сохраняем как NULL: «оценка без отзыва»
+  const textReview = text?.trim() || null;
+
+  try {
+    const { rows } = await pool.query(`
+      INSERT INTO reviews (user_id, game_id, rating, text_review)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, rating, text_review, created_at
+    `, [req.user.id, gameId, rating, textReview]);
+
+    res.status(201).json({ review: rows[0] });
+  } catch (err) {
+    // 23505 — нарушен UNIQUE (user_id, game_id): отзыв уже есть
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'You have already reviewed this game' });
+    }
+    // 23503 — нарушен внешний ключ: такой игры нет
+    if (err.code === '23503') {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    throw err;
+  }
 });
 
 export default router;

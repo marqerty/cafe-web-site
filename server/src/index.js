@@ -1,3 +1,4 @@
+import cors from 'cors';
 import express from 'express';
 import { pool } from './db.js';
 import gamesRouter from './routes/games.js';
@@ -5,8 +6,12 @@ import genresRouter from './routes/genres.js';
 import tablesRouter from './routes/tables.js'
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
+import bookingsRouter from './routes/bookings.js';
 
 const app = express();
+
+// Разрешаем запросы только с адреса нашего фронтенда
+app.use(cors({ origin: process.env.CLIENT_ORIGIN }));
 
 // middleware (читает тело запроса, превращает JSON в объект и кладёт его в req.body) limit защищает от огромных тел
 app.use(express.json({ limit: '10kb' }));
@@ -22,6 +27,7 @@ app.use('/api/genres', genresRouter);
 app.use('/api/tables', tablesRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/bookings', bookingsRouter);
 
 // Неизвестный адрес 404
 app.use((req, res) => {
